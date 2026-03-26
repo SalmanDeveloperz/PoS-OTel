@@ -3,8 +3,18 @@
 Working demonstration of full-stack observability for Jenkins using OpenTelemetry.
 
 ## Architecture:
-```
+
 Jenkins (OTel Plugin) => OpenTelemetry Collector => Jaeger
+
+```
+├── Jenkins                    (port 8080)
+│   └── OpenTelemetry Plugin   v3.1584
+├── OTel Collector             (ports 4317, 4318, 8888)
+│   ├── tail_sampling processor
+│   ├── batch processor
+│   └── debug exporter
+└── Jaeger                     (port 16686)
+    └── OTLP receiver          (port 4317)
 ```
 
 ## Components:
