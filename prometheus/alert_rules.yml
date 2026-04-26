@@ -1,0 +1,29 @@
+groups:
+  - name: pipeline-health
+    rules:
+      - alert: PipelineFailureRateHigh
+        expr: sum(rate(pipeline_job_failures_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pipeline failures detected"
+          description: "Failure rate is above threshold in the last 5 minutes."
+
+      - alert: PipelineSlowJobsDetected
+        expr: (sum(rate(pipeline_job_duration_seconds_count[5m])) - sum(rate(pipeline_job_duration_seconds_bucket{le="10.0"}[5m]))) > 0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow jobs detected"
+          description: "Jobs slower than 10 seconds are being observed."
+
+      - alert: OTelCollectorDroppingSpans
+        expr: sum(rate(otelcol_receiver_refused_spans[5m])) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Collector is refusing spans"
+          description: "OTel Collector is refusing spans; telemetry loss may occur."

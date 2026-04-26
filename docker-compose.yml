@@ -1,13 +1,9 @@
-version: '3.8'
-
 services:
   # Jaeger for viewing traces
   jaeger:
     image: jaegertracing/all-in-one:latest
     ports:
       - "16686:16686"  # Jaeger UI
-      - "4317:4317"    # OTLP gRPC receiver
-      - "4318:4318"    # OTLP HTTP receiver
     environment:
       - COLLECTOR_OTLP_ENABLED=true
 
@@ -18,8 +14,10 @@ services:
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
-      - "4317"  # OTLP gRPC receiver
+      - "4317:4317"  # OTLP gRPC receiver
+      - "4318:4318"  # OTLP HTTP receiver
       - "8888:8888"  # prometheus metrics
+      - "8889:8889"  # span metrics for Prometheus
       - "13133:13133"  # health check
     depends_on:
       - jaeger
@@ -35,5 +33,44 @@ services:
     environment:
       - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
 
+  pipeline-simulator:
+    build:
+      context: ./pipeline-simulator
+    ports:
+      - "8000:8000"
+    environment:
+      - METRICS_PORT=8000
+
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - otel-collector
+      - pipeline-simulator
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   jenkins_home:
+  prometheus_data:
+  grafana_data:
